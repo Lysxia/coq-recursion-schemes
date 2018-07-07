@@ -2,4 +2,5 @@
 
 theories/Indexed.v   # indexed types
 theories/Fix.v       # least fixed points
+theories/PCofix.v    # parameterized coinduction (paco)
 theories/Examples.v  # unit tests

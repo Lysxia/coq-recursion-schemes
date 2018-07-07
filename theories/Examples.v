@@ -3,6 +3,7 @@ Import List.ListNotations.
 
 Require Import RecursionSchemes.Indexed.
 Require Import RecursionSchemes.Fix.
+Require Import RecursionSchemes.PCofix.
 
 Example example_curried_0 : forall t, ([] *-> t) = t.
 Proof. reflexivity. Qed.
@@ -60,3 +61,11 @@ Definition to_list {A : Type} (xs : list' A) : list A :=
           | nilF => []
           | consF x xs => x :: xs
           end%list).
+
+CoInductive stream :=
+| Yield : nat -> stream.
+
+Inductive zz_ (zz : list nat -> Prop) : list nat -> Prop :=
+| ZZ : forall t, zz t -> zz_ zz (0 :: t).
+
+Definition zz := paco 1 zz_ (bot 1).

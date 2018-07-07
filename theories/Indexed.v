@@ -32,6 +32,13 @@ Polymorphic Fixpoint repeat (A : Type) (n : nat) : list Type :=
   | S n => A :: repeat A n
   end.
 
+Polymorphic Fixpoint forget {A : Type} {n : nat}
+            (xs : product (repeat A n)) : list A :=
+  match n, xs with
+  | O, _ => []
+  | S n, (x, xs) => x :: forget xs
+  end.
+
 Notation "'foralls' xs : n * A , t" :=
   (foralls_ (repeat A n) (fun xs => t))
 (at level 100, xs, n at level 10).
