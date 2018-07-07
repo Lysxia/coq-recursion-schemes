@@ -1,0 +1,5 @@
+-Q theories/ RecursionSchemes
+
+theories/Indexed.v   # indexed types
+theories/Fix.v       # least fixed points
+theories/Examples.v  # unit tests
