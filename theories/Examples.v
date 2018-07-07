@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List.
-Import ListNotations.
+Require Coq.Lists.List.
+Import List.ListNotations.
 
 Require Import RecursionSchemes.Indexed.
 Require Import RecursionSchemes.Fix.
@@ -26,8 +26,8 @@ Example example_algebra : forall t1 t2 f g,
     (forall x1 x2, f g x1 x2 -> g x1 x2).
 Proof. reflexivity. Qed.
 
-Example example_Mu : forall t1 t2 f x1 x2,
-    Mu [t1; t2] f x1 x2 =
+Example example_mu : forall t1 t2 f x1 x2,
+    mu [t1; t2] f x1 x2 =
     forall g, algebra [t1; t2] f g -> g x1 x2.
 Proof. reflexivity. Qed.
 
@@ -38,13 +38,13 @@ Inductive listF (A : Type) (list_A : Type) :=
 Arguments nilF {A list_A}.
 Arguments consF {A list_A}.
 
-Definition list' (A : Type) := Mu [] (listF A).
+Definition list' (A : Type) := mu [] (listF A).
 
 Definition from_list_ {A : Type} (xs : list A) : listF A (list A) :=
   match xs with
   | [] => nilF
   | x :: xs => consF x xs
-  end.
+  end%list.
 
 Definition from_list {A : Type} (xs : list A) : list' A :=
   fun _ alg =>
@@ -52,11 +52,11 @@ Definition from_list {A : Type} (xs : list A) : list' A :=
        match xs with
        | [] => alg nilF
        | x :: xs => alg (consF x (fold xs))
-       end) xs.
+       end%list) xs.
 
 Definition to_list {A : Type} (xs : list' A) : list A :=
   xs _ (fun xs =>
           match xs with
           | nilF => []
           | consF x xs => x :: xs
-          end).
+          end%list).
