@@ -99,3 +99,20 @@ Polymorphic Fixpoint lift_curried (ts : telescope) {A B C : Type}
   | Tip => fun a b => f a b
   | Arr t ts => fun a b x => lift_curried (ts x) f (a x) (b x)
   end.
+
+Fixpoint extend (ts : telescope) : (ts *-> Type) -> telescope :=
+  match ts with
+  | Tip => fun f => Arr f (fun _ => Tip)
+  | Arr t ts => fun f => Arr t (fun x => extend (ts x) (f x))
+  end.
+
+Infix ">-" := extend (at level 40, left associativity).
+
+Module TelescopeNotations.
+
+Notation "[[ ]]" := Tip : tele_scope.
+Notation "[[ a1 .. an ]]" :=
+  (Arr _ (fun a1 => .. (Arr _ (fun an => Tip)) .. ))
+(a1 binder, an binder) : tele_scope.
+
+End TelescopeNotations.

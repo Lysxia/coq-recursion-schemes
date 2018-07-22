@@ -72,4 +72,4 @@ CoInductive stream :=
 Inductive zz_ (zz : list nat -> Prop) : list nat -> Prop :=
 | ZZ : forall t, zz t -> zz_ zz (0 :: t).
 
-Definition zz := paco 1 zz_ (bot 1).
+Definition zz := paco1 _ zz_ (@bot (Tip >- _)).

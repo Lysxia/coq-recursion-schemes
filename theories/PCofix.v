@@ -3,6 +3,9 @@ Import ListNotations.
 
 Require Import RecursionSchemes.Indexed.
 
+Notation ENDO T := (T -> T) (only parsing).
+Notation FIX T := ((T -> T) -> (T -> T)).
+
 CoInductive
   paco_ (T : Type)
   (gf : (T -> Prop) -> (T -> Prop))
@@ -58,37 +61,50 @@ Proof.
   auto.
 Qed.
 
-(* Trick to help type inference. *)
-Class Destruct (n : nat) (ts : telescope).
-Instance Destruct_Tip : Destruct 0 Tip.
-Instance Destruct_Arr n t ts `(forall x, Destruct n (ts x)) :
-  Destruct (S n) (Arr t ts).
-
-Definition paco
-    (n : nat)
-    (ts : telescope) `{Destruct n ts} :
-  ((ts *-> Prop) -> (ts *-> Prop)) ->
-  ((ts *-> Prop) -> (ts *-> Prop)) :=
+Definition paco (ts : telescope) : FIX (ts *-> Prop) :=
   fun gf r => 
     curry
       (paco_ (fun pco => uncurry (gf (curry pco)))
              (uncurry r)).
 
-Arguments paco n {ts _} gf r.
+Arguments paco {ts}.
 
-Definition
-  bot (n : nat) :
-    forall (ts : telescope) `{Destruct n ts},
-      ts *-> Prop :=
-  fun ts _ => funs xs : ts => False.
+Definition bot : forall (ts : telescope), ts *-> Prop :=
+  fun ts => funs xs : ts => False.
 
-Arguments bot n {ts _}.
+Arguments bot {ts}.
 
-Definition upaco
-    (n : nat)
-    (ts : telescope) `{Destruct n ts} :
-  ((ts *-> Prop) -> (ts *-> Prop)) ->
-  ((ts *-> Prop) -> (ts *-> Prop)) :=
+Definition upaco (ts : telescope) : FIX (ts *-> Prop) :=
   fun gf r =>
     curry (fun xs =>
-             uncurry (paco n gf r) xs \/ uncurry r xs).
+             uncurry (paco gf r) xs \/ uncurry r xs).
+
+Arguments upaco {ts}.
+
+Section PacoN.
+
+Import TelescopeNotations.
+Open Scope tele_scope.
+
+Variable T0 : Type.
+Variable T1 : forall (x0 : T0), Type.
+Variable T2 : forall (x0 : T0) (x1 : T1 x0), Type.
+Variable T3 : forall (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1), Type.
+Variable T4 : forall (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1) (x3 : T3 x0 x1 x2), Type.
+
+Definition paco0 : FIX Prop :=
+  @paco [[ ]].
+Definition paco1 : FIX (Tip >- T0 *-> Prop) :=
+  @paco [[ (_ : T0) ]].
+Definition paco2 : FIX (Tip >- T0 >- T1 *-> Prop) :=
+  @paco [[ (x0 : T0) (x1 : T1 x0) ]].
+Definition paco3 : FIX (Tip >- T0 >- T1 >- T2 *-> Prop) :=
+  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1) ]].
+Definition paco4 : FIX (Tip >- T0 >- T1 >- T2 >- T3 *-> Prop) :=
+  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
+           (x3 : T3 x0 x1 x2) ]].
+Definition paco5 : FIX (Tip >- T0 >- T1 >- T2 >- T3 >- T4 *-> Prop) :=
+  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
+           (x3 : T3 x0 x1 x2) (x4 : T4 x0 x1 x2 x3) ]].
+
+End PacoN.
