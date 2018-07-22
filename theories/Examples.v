@@ -5,7 +5,7 @@ Require Import RecursionSchemes.Indexed.
 Require Import RecursionSchemes.Fix.
 Require Import RecursionSchemes.PCofix.
 
-Example example_curried_0 : forall t, (Tip *-> t) = t.
+Example example_curried_0 : forall t, ((I : telescope 0) *-> t) = t.
 Proof. reflexivity. Qed.
 
 Example example_curried_1 :
@@ -43,7 +43,7 @@ Inductive listF (A : Type) (list_A : Type) :=
 Arguments nilF {A list_A}.
 Arguments consF {A list_A}.
 
-Definition list' (A : Type) := mu Tip (listF A).
+Definition list' (A : Type) := mu (I : telescope 0) (listF A).
 
 Definition from_list_ {A : Type} (xs : list A) : listF A (list A) :=
   match xs with
@@ -73,3 +73,19 @@ Inductive zz_ (zz : list nat -> Prop) : list nat -> Prop :=
 | ZZ : forall t, zz t -> zz_ zz (0 :: t).
 
 Definition zz := paco 1 zz_ (bot 1).
+
+Section Paco2.
+
+Variable T1 : Type.
+Variable T2 : forall (x1 : T1), Type.
+Notation rel2 := (forall (x1 : T1) (x2 : T2 x1), Prop).
+Variable r : rel2 -> rel2.
+
+Set Typeclasses Debug.
+
+Definition paco2 := @paco 2 (existT _ _ (fun _ => existT _ _ _)) _ r.
+
+(* TODO: make this work. *)
+(* Definition paco2' := paco 2 r. *)
+
+End Paco2.
