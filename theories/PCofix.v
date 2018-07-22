@@ -29,8 +29,6 @@ Definition monotone_ {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :=
 
 Require Import Paco.paco.
 
-Print paco1_acc.
-
 Theorem paco_acc_ {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :
   forall l r,
     (forall rr, (r --> rr) -> (l --> rr) -> l --> paco_ gf rr) ->
