@@ -3,21 +3,32 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-Polymorphic Fixpoint product (ts : list Type) : Type :=
+(* Not sure if that's what this is called
+   In Richard Eisenberg's thesis, a telescope is a list of
+   bindings where each binding can depend on the previous ones. *)
+Polymorphic Inductive telescope : Type :=
+| Tip : telescope
+| Arr : forall t : Type, (t -> telescope) -> telescope.
+
+(* A non-dependent list of types is a special kind of telescope. *)
+Fixpoint list_to_telescope (ts : list Type) : telescope :=
   match ts with
-  | [] => unit
-  | t :: ts => t * product ts
+  | [] => Tip
+  | t :: ts => Arr t (fun _ => list_to_telescope ts)
   end.
 
-(* Monomorphism breaks [Mu] for some reason. *)
-(* Keep polymorphism minimal for now in case I want to
-   understand what's going on. *)
-Polymorphic Fixpoint foralls_ (ts : list Type) :
+Polymorphic Fixpoint product (ts : telescope) : Type :=
+  match ts with
+  | Tip => unit
+  | Arr t ts => sigT (fun x : t => product (ts x))
+  end.
+
+Polymorphic Fixpoint foralls_ (ts : telescope) :
   (product ts -> Type) -> Type :=
   match ts with
-  | [] => fun res => res tt
-  | t :: ts => fun res =>
-    forall x : t, foralls_ ts (fun xs => res (x, xs))
+  | Tip => fun res => res tt
+  | Arr t ts => fun res =>
+    forall x : t, foralls_ (ts x) (fun xs => res (existT _ x xs))
   end.
 
 Notation "ts *-> r" := (foralls_ ts (fun _ => r))
@@ -26,40 +37,42 @@ Notation "ts *-> r" := (foralls_ ts (fun _ => r))
 Notation "'foralls' xs : ts , t" := (foralls_ ts (fun xs => t))
 (at level 100, xs, ts at level 10).
 
-Polymorphic Fixpoint repeat (A : Type) (n : nat) : list Type :=
+Polymorphic Fixpoint repeat (A : Type) (n : nat) : telescope :=
   match n with
-  | O => []
-  | S n => A :: repeat A n
+  | O => Tip
+  | S n => Arr A (fun _ => repeat A n)
   end.
 
 Polymorphic Fixpoint forget {A : Type} {n : nat}
             (xs : product (repeat A n)) : list A :=
   match n, xs with
   | O, _ => []
-  | S n, (x, xs) => x :: forget xs
+  | S n, existT _ x xs => x :: forget xs
   end.
 
 Notation "'foralls' xs : n * A , t" :=
   (foralls_ (repeat A n) (fun xs => t))
 (at level 100, xs, n at level 10).
 
-Polymorphic Fixpoint uncurry (ts : list Type) :
+Polymorphic Fixpoint uncurry (ts : telescope) :
   forall (res : product ts -> Type),
     foralls_ ts res -> forall xs, res xs :=
   match ts with
-  | [] => fun _ f 'tt => f
-  | t :: ts => fun _ f '(x, xs) => uncurry ts _ (f x) xs
+  | Tip => fun _ f 'tt => f
+  | Arr t ts => fun _ f '(existT _ x xs) =>
+    uncurry (ts x) _ (f x) xs
   end.
 
 Arguments uncurry {ts res} f xs.
 
 (* naive version *)
-Polymorphic Fixpoint curry (ts : list Type) :
+Polymorphic Fixpoint curry (ts : telescope) :
   forall (res : product ts -> Type),
     (forall xs, res xs) -> foralls_ ts res :=
   match ts with
-  | [] => fun _ f => f tt
-  | t :: ts => fun _ f x => curry ts _ (fun xs => f (x, xs))
+  | Tip => fun _ f => f tt
+  | Arr t ts => fun _ f x =>
+    curry (ts x) _ (fun xs => f (existT _ x xs))
   end.
 
 Arguments curry {ts res} f.
@@ -71,18 +84,18 @@ Notation "'funs' xs : n * A => r" :=
   (@curry (repeat A n) _ (fun xs => r))
 (at level 100, xs, n at level 10).
 
-Polymorphic Definition consts (ts : list Type) {A : Type} (a : A) :
+Polymorphic Definition consts (ts : telescope) {A : Type} (a : A) :
   ts *-> A :=
   (fix pure ts : ts *-> A :=
      match ts with
-     | [] => a
-     | t :: ts => fun _ => pure ts
+     | Tip => a
+     | Arr t ts => fun x => pure (ts x)
      end) ts.
 
-Polymorphic Fixpoint lift_curried (ts : list Type) {A B C : Type}
+Polymorphic Fixpoint lift_curried (ts : telescope) {A B C : Type}
          (f : A -> B -> C) :
   (ts *-> A) -> (ts *-> B) -> (ts *-> C) :=
   match ts with
-  | [] => fun a b => f a b
-  | t :: ts => fun a b x => lift_curried ts f (a x) (b x)
+  | Tip => fun a b => f a b
+  | Arr t ts => fun a b x => lift_curried (ts x) f (a x) (b x)
   end.

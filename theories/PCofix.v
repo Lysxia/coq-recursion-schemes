@@ -61,15 +61,14 @@ Proof.
 Qed.
 
 (* Trick to help type inference. *)
-Class Destruct {T : Type} (t : T).
-Instance Destruct_Pair (A B : Type) (a : A) (b : B) `{Destruct _ b} :
-  Destruct (a, b).
-Instance Destruct_Unit : Destruct tt.
+Class Destruct (n : nat) (ts : telescope).
+Instance Destruct_Tip : Destruct 0 Tip.
+Instance Destruct_Arr n t ts `(forall x, Destruct n (ts x)) :
+  Destruct (S n) (Arr t ts).
 
 Definition paco
     (n : nat)
-    (ts : product (repeat Type n)) `{Destruct _ ts} :
-  let ts := forget ts in
+    (ts : telescope) `{Destruct n ts} :
   ((ts *-> Prop) -> (ts *-> Prop)) ->
   ((ts *-> Prop) -> (ts *-> Prop)) :=
   fun gf r => 
@@ -81,16 +80,15 @@ Arguments paco n {ts _} gf r.
 
 Definition
   bot (n : nat) :
-    forall (ts : product (repeat Type n)) `{Destruct _ ts},
-      forget ts *-> Prop :=
-  fun ts _ => funs xs : forget ts => False.
+    forall (ts : telescope) `{Destruct n ts},
+      ts *-> Prop :=
+  fun ts _ => funs xs : ts => False.
 
 Arguments bot n {ts _}.
 
 Definition upaco
     (n : nat)
-    (ts : product (repeat Type n)) `{Destruct _ ts} :
-  let ts := forget ts in
+    (ts : telescope) `{Destruct n ts} :
   ((ts *-> Prop) -> (ts *-> Prop)) ->
   ((ts *-> Prop) -> (ts *-> Prop)) :=
   fun gf r =>
