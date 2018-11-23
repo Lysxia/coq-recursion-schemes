@@ -3,12 +3,31 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 
+(* Universe polymorphic versions of [unit] and [sigT] to
+   avoid constraints on universes from the standard library. *)
+
+Polymorphic Inductive punit : Type := ptt.
+
+Polymorphic Inductive psigT (I : Type) (P : I -> Type) : Type :=
+| pexistT (i : I) (p : P i).
+
+Arguments psigT {I} P.
+Arguments pexistT {I P}.
+
 (* Not sure if that's what this is called
    In Richard Eisenberg's thesis, a telescope is a list of
    bindings where each binding can depend on the previous ones. *)
 Polymorphic Inductive telescope : nat -> Type :=
 | Tip : telescope 0
 | Arr {n : nat} (t : Type) : (t -> telescope n) -> telescope (S n).
+
+(*
+Polymorphic Fixpoint telescope' (n : nat) : Type :=
+  match n with
+  | O => punit
+  | S m => psigT (fun t : Type => t -> telescope' m)
+  end.
+*)
 
 (* A non-dependent list of types is a special kind of telescope. *)
 Fixpoint list_to_telescope (ts : list Type) : telescope (length ts) :=
@@ -19,16 +38,16 @@ Fixpoint list_to_telescope (ts : list Type) : telescope (length ts) :=
 
 Polymorphic Fixpoint product {n : nat} (ts : telescope n) : Type :=
   match ts with
-  | Tip => unit
-  | Arr t ts => sigT (fun x : t => product (ts x))
+  | Tip => punit
+  | Arr t ts => psigT (fun x : t => product (ts x))
   end.
 
 Polymorphic Fixpoint foralls_ {n : nat} (ts : telescope n) :
   (product ts -> Type) -> Type :=
   match ts with
-  | Tip => fun res => res tt
+  | Tip => fun res => res ptt
   | Arr t ts => fun res =>
-    forall x : t, foralls_ (ts x) (fun xs => res (existT _ x xs))
+    forall x : t, foralls_ (ts x) (fun xs => res (pexistT x xs))
   end.
 
 Notation "ts *-> r" := (foralls_ ts (fun _ => r))
@@ -47,7 +66,7 @@ Polymorphic Fixpoint forget {A : Type} {n : nat}
             (xs : product (repeat A n)) : list A :=
   match n, xs with
   | O, _ => []
-  | S n, existT _ x xs => x :: forget xs
+  | S n, pexistT x xs => x :: forget xs
   end.
 
 Notation "'foralls' xs : n * A , t" :=
@@ -58,8 +77,8 @@ Polymorphic Fixpoint uncurry {n : nat} (ts : telescope n) :
   forall (res : product ts -> Type),
     foralls_ ts res -> forall xs, res xs :=
   match ts with
-  | Tip => fun res f 'tt => f
-  | Arr t ts => fun _ f '(existT _ x xs) =>
+  | Tip => fun res f 'ptt => f
+  | Arr t ts => fun _ f '(pexistT x xs) =>
     uncurry (ts x) _ (f x) xs
   end.
 
@@ -70,9 +89,9 @@ Polymorphic Fixpoint curry {n : nat} (ts : telescope n) :
   forall (res : product ts -> Type),
     (forall xs, res xs) -> foralls_ ts res :=
   match ts with
-  | Tip => fun _ f => f tt
+  | Tip => fun _ f => f ptt
   | Arr t ts => fun _ f x =>
-    curry (ts x) _ (fun xs => f (existT _ x xs))
+    curry (ts x) _ (fun xs => f (pexistT x xs))
   end.
 
 Arguments curry {n ts res} f.
@@ -101,7 +120,7 @@ Polymorphic Fixpoint lift_curried {n : nat} (ts : telescope n) {A B C : Type}
   | Arr t ts => fun a b x => lift_curried (ts x) f (a x) (b x)
   end.
 
-Fixpoint extend {n : nat} (ts : telescope n) :
+Polymorphic Fixpoint extend {n : nat} (ts : telescope n) :
   (ts *-> Type) -> telescope (S n) :=
   match ts with
   | Tip => fun f => Arr f (fun _ => Tip)
@@ -110,15 +129,15 @@ Fixpoint extend {n : nat} (ts : telescope n) :
 
 Infix ">-" := extend (at level 40, left associativity).
 
-Fixpoint snoc {n : nat} {ts : telescope n} :
+Polymorphic Fixpoint snoc {n : nat} {ts : telescope n} :
   forall (A : ts *-> Type) (xs : product ts),
     uncurry A xs -> product (ts >- A) :=
   match ts with
-  | Tip => fun (A : Type) 'tt (a : A) => existT _ a tt
+  | Tip => fun (A : Type) 'ptt (a : A) => pexistT a ptt
   | Arr t ts' =>
-    fun (A : forall x : t, ts' x *-> Type) '(existT _ x xs')
+    fun (A : forall x : t, ts' x *-> Type) '(pexistT x xs')
         (a : uncurry (A x) xs') =>
-      existT _ x (snoc (A x) xs' a)
+      pexistT x (snoc (A x) xs' a)
   end.
 
 Polymorphic Fixpoint FORALLS_0 {m0 : nat} (ts0 : telescope m0)
@@ -133,7 +152,7 @@ Polymorphic Fixpoint FORALLS_0 {m0 : nat} (ts0 : telescope m0)
 
 Polymorphic Definition FORALLS_ (n : nat)
             (f : telescope n -> Type) : Type :=
-  FORALLS_0 Tip n (fun tsn => f (tsn tt)).
+  FORALLS_0 Tip n (fun tsn => f (tsn ptt)).
 
 Polymorphic Fixpoint FUNS_0 {m0 : nat} (ts0 : telescope m0)
             (n : nat) :
@@ -148,7 +167,69 @@ Polymorphic Fixpoint FUNS_0 {m0 : nat} (ts0 : telescope m0)
 Polymorphic Definition FUNS_ (n : nat)
             (f : telescope n -> Type)
             (g : forall ts : telescope n, f ts) : FORALLS_ n f :=
-  FUNS_0 Tip n (fun tsn => f (tsn tt)) (fun tsn => g (tsn tt)).
+  FUNS_0 Tip n (fun tsn => f (tsn ptt)) (fun tsn => g (tsn ptt)).
+
+
+Polymorphic Definition head_ts {n : nat} (ts : telescope (S n)) : Type :=
+  match ts return Type with
+  | Tip => False (* Unreachable *)
+  | Arr t _ => t
+  end.
+
+
+(*
+Notation head_ts ts :=
+  match ts return Type with
+  | Tip => False (* Unreachable *)
+  | Arr t _ => t
+  end.
+*)
+
+Polymorphic Definition tail_ts {n : nat} (ts : telescope (S n)) :
+  head_ts ts -> telescope n :=
+  match ts in telescope Sn return
+        match Sn return telescope Sn -> Type with
+        | O => fun _ => punit
+        | S n => fun ts => head_ts ts -> telescope n
+        end ts with
+  | Tip => ptt
+  | Arr _ ts => ts
+  end.
+
+Polymorphic Fixpoint ETA_ (n : nat) : telescope n -> telescope n :=
+  match n with
+  | O => fun _ => Tip
+  | S m => fun ts => Arr (head_ts ts) (fun x => ETA_ m (tail_ts ts x))
+  end.
+
+(*
+Polymorphic Fixpoint ETA (n : nat) (ts : telescope n) : forall R, (telescope n -> R) -> R :=
+  match ts with
+  | Tip => fun _ f => f Tip
+  | Arr t ts' => fun _ f => ETA _ ts' _ (fun ts' => f (Arr t ts'))
+  end.
+*)
+
+Polymorphic Fixpoint APPLYS_0 {m0 : nat} (ts0 : telescope m0)
+            (n : nat) :
+  forall (f : (product ts0 -> telescope n) -> Type)
+         (g : FORALLS_0 ts0 n f)
+         (tsn : product ts0 -> telescope n), f (fun o => ETA_ _ (tsn o)) :=
+  match n with
+  | O => fun f g tsn => g
+  | S m => fun f g tsn =>
+    APPLYS_0 (ts0 >- curry (fun xs0 => head_ts (tsn xs0))) m
+             (fun tsm => f (fun xs0 => Arr _ (fun x => tsm (snoc _ xs0 x))))
+             _ _
+  end.
+
+Polymorphic Definition APPLYS_ (n : nat)
+            (f : telescope n -> Type)
+            (g : FORALLS_ n f)
+            (ts : telescope n) : f ts :=
+  match ts with
+  | Tip => g
+  | Αrr t ts' => APPLYS_ _ (fun tsm =>
 
 Module TelescopeNotations.
 

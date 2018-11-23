@@ -3,49 +3,52 @@ Import ListNotations.
 
 Require Import RecursionSchemes.Indexed.
 
-Notation ENDO T := (T -> T) (only parsing).
-Notation FIX T := ((T -> T) -> (T -> T)).
+Require Import Paco.paconotation.
+
+Local Notation ENDO T := (T -> T) (only parsing).
+Local Notation FIX T := ((T -> T) -> (T -> T)).
 
 CoInductive
-  paco_ (T : Type)
+  paco1 (T : Type)
   (gf : (T -> Prop) -> (T -> Prop))
   (r : T -> Prop)
   (x : T) : Prop :=
-| paco_pfold_ (pco : T -> Prop) :
-    (forall y, pco y -> paco_ T gf r y \/ r y) ->
+| paco_pfold1 (pco : T -> Prop) :
+    (forall y, pco y -> paco1 T gf r y \/ r y) ->
     gf pco x ->
-    paco_ T gf r x.
+    paco1 T gf r x.
 
-Arguments paco_ {T}.
-Arguments paco_pfold_ {T gf r x} pco.
+Arguments paco1 {T}.
+Arguments paco_pfold1 {T gf r x} pco.
 
-Notation "r --> r'" := (forall y, (r y : Prop) -> (r' y : Prop))
-(at level 100).
-
-Notation "r \_/ r'" := (fun y => r y \/ r' y)
-(at level 50).
-
-Definition monotone_ {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :=
+Definition monotone1 {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :=
   forall (r r' : T -> Prop),
-    (r --> r') ->
-    forall x, gf r x -> gf r' x.
+    (r <1= r') ->
+    (gf r <1= gf r').
 
-Require Import Paco.paco.
+Require Paco.paco.
+About paco2.monotone2.
 
-Theorem paco_acc_ {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :
+Definition rel_ (n : nat) : FORALLS_ n (fun _ => Type) :=
+  FUNS_ n _ (fun ts => ts *-> Prop).
+
+Definition monotone_ (n : nat) : FORALLS_ n (fun ts =>
+                                            )
+
+Theorem paco_acc1 {T : Type} (gf : (T -> Prop) -> (T -> Prop)) :
   forall l r,
-    (forall rr, (r --> rr) -> (l --> rr) -> l --> paco_ gf rr) ->
-    l --> paco_ gf r.
+    (forall rr, (r <1= rr) -> (l <1= rr) -> l <1= paco1 gf rr) ->
+    l <1= paco1 gf r.
 Proof.
   intros l r OBG x Plx.
-  assert (SIM : paco_ gf (r \_/ l) x).
+  assert (SIM : paco1 gf (r \1/ l) x).
   { apply OBG; auto. }
   clear Plx.
   generalize dependent x.
   cofix paco_acc_.
   intros x SIM.
   destruct SIM as [pco LE SIM'].
-  apply paco_pfold_ with (pco0 := pco).
+  apply paco_pfold1 with (pco0 := pco).
   { intros y PRy. destruct (LE y) as [ | [ | ]]; auto. }
   auto.
 Qed.
