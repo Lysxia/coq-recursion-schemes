@@ -61,25 +61,25 @@ Proof.
   auto.
 Qed.
 
-Definition paco (ts : telescope) : FIX (ts *-> Prop) :=
+Definition paco (n : nat) (ts : telescope n) : FIX (ts *-> Prop) :=
   fun gf r => 
     curry
       (paco_ (fun pco => uncurry (gf (curry pco)))
              (uncurry r)).
 
-Arguments paco {ts}.
+Arguments paco n {ts}.
 
-Definition bot : forall (ts : telescope), ts *-> Prop :=
-  fun ts => funs xs : ts => False.
+Definition bot (n : nat) (ts : telescope n) : ts *-> Prop :=
+  funs xs : ts => False.
 
-Arguments bot {ts}.
+Arguments bot n {ts}.
 
-Definition upaco (ts : telescope) : FIX (ts *-> Prop) :=
+Definition upaco (n : nat) (ts : telescope n) : FIX (ts *-> Prop) :=
   fun gf r =>
     curry (fun xs =>
-             uncurry (paco gf r) xs \/ uncurry r xs).
+             uncurry (paco n gf r) xs \/ uncurry r xs).
 
-Arguments upaco {ts}.
+Arguments upaco n {ts}.
 
 Section PacoN.
 
@@ -93,18 +93,18 @@ Variable T3 : forall (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1), Type.
 Variable T4 : forall (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1) (x3 : T3 x0 x1 x2), Type.
 
 Definition paco0 : FIX Prop :=
-  @paco [[ ]].
+  @paco 0 [[ ]].
 Definition paco1 : FIX (Tip >- T0 *-> Prop) :=
-  @paco [[ (_ : T0) ]].
+  @paco 1 [[ (_ : T0) ]].
 Definition paco2 : FIX (Tip >- T0 >- T1 *-> Prop) :=
-  @paco [[ (x0 : T0) (x1 : T1 x0) ]].
+  @paco 2 [[ (x0 : T0) (x1 : T1 x0) ]].
 Definition paco3 : FIX (Tip >- T0 >- T1 >- T2 *-> Prop) :=
-  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1) ]].
+  @paco 3 [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1) ]].
 Definition paco4 : FIX (Tip >- T0 >- T1 >- T2 >- T3 *-> Prop) :=
-  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
+  @paco 4 [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
            (x3 : T3 x0 x1 x2) ]].
 Definition paco5 : FIX (Tip >- T0 >- T1 >- T2 >- T3 >- T4 *-> Prop) :=
-  @paco [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
+  @paco 5 [[ (x0 : T0) (x1 : T1 x0) (x2 : T2 x0 x1)
            (x3 : T3 x0 x1 x2) (x4 : T4 x0 x1 x2 x3) ]].
 
 End PacoN.

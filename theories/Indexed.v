@@ -6,24 +6,24 @@ Import ListNotations.
 (* Not sure if that's what this is called
    In Richard Eisenberg's thesis, a telescope is a list of
    bindings where each binding can depend on the previous ones. *)
-Polymorphic Inductive telescope : Type :=
-| Tip : telescope
-| Arr : forall t : Type, (t -> telescope) -> telescope.
+Polymorphic Inductive telescope : nat -> Type :=
+| Tip : telescope 0
+| Arr {n : nat} (t : Type) : (t -> telescope n) -> telescope (S n).
 
 (* A non-dependent list of types is a special kind of telescope. *)
-Fixpoint list_to_telescope (ts : list Type) : telescope :=
+Fixpoint list_to_telescope (ts : list Type) : telescope (length ts) :=
   match ts with
   | [] => Tip
   | t :: ts => Arr t (fun _ => list_to_telescope ts)
   end.
 
-Polymorphic Fixpoint product (ts : telescope) : Type :=
+Polymorphic Fixpoint product {n : nat} (ts : telescope n) : Type :=
   match ts with
   | Tip => unit
   | Arr t ts => sigT (fun x : t => product (ts x))
   end.
 
-Polymorphic Fixpoint foralls_ (ts : telescope) :
+Polymorphic Fixpoint foralls_ {n : nat} (ts : telescope n) :
   (product ts -> Type) -> Type :=
   match ts with
   | Tip => fun res => res tt
@@ -37,7 +37,7 @@ Notation "ts *-> r" := (foralls_ ts (fun _ => r))
 Notation "'foralls' xs : ts , t" := (foralls_ ts (fun xs => t))
 (at level 100, xs, ts at level 10).
 
-Polymorphic Fixpoint repeat (A : Type) (n : nat) : telescope :=
+Polymorphic Fixpoint repeat (A : Type) (n : nat) : telescope n :=
   match n with
   | O => Tip
   | S n => Arr A (fun _ => repeat A n)
@@ -54,7 +54,7 @@ Notation "'foralls' xs : n * A , t" :=
   (foralls_ (repeat A n) (fun xs => t))
 (at level 100, xs, n at level 10).
 
-Polymorphic Fixpoint uncurry (ts : telescope) :
+Polymorphic Fixpoint uncurry {n : nat} (ts : telescope n) :
   forall (res : product ts -> Type),
     foralls_ ts res -> forall xs, res xs :=
   match ts with
@@ -63,10 +63,10 @@ Polymorphic Fixpoint uncurry (ts : telescope) :
     uncurry (ts x) _ (f x) xs
   end.
 
-Arguments uncurry {ts res} f xs.
+Arguments uncurry {n ts res} f xs.
 
 (* naive version *)
-Polymorphic Fixpoint curry (ts : telescope) :
+Polymorphic Fixpoint curry {n : nat} (ts : telescope n) :
   forall (res : product ts -> Type),
     (forall xs, res xs) -> foralls_ ts res :=
   match ts with
@@ -75,24 +75,25 @@ Polymorphic Fixpoint curry (ts : telescope) :
     curry (ts x) _ (fun xs => f (existT _ x xs))
   end.
 
-Arguments curry {ts res} f.
+Arguments curry {n ts res} f.
 
-Notation "'funs' xs : ts => r" := (@curry ts _ (fun xs => r))
+Notation "'funs' xs : ts => r" := (@curry _ ts _ (fun xs => r))
 (at level 100, xs, ts at level 10).
 
 Notation "'funs' xs : n * A => r" :=
-  (@curry (repeat A n) _ (fun xs => r))
+  (@curry n (repeat A n) _ (fun xs => r))
 (at level 100, xs, n at level 10).
 
-Polymorphic Definition consts (ts : telescope) {A : Type} (a : A) :
+Polymorphic Definition consts {n : nat} (ts : telescope n)
+            {A : Type} (a : A) :
   ts *-> A :=
-  (fix pure ts : ts *-> A :=
+  (fix pure {n : nat} (ts : telescope n) : ts *-> A :=
      match ts with
      | Tip => a
      | Arr t ts => fun x => pure (ts x)
-     end) ts.
+     end) _ ts.
 
-Polymorphic Fixpoint lift_curried (ts : telescope) {A B C : Type}
+Polymorphic Fixpoint lift_curried {n : nat} (ts : telescope n) {A B C : Type}
          (f : A -> B -> C) :
   (ts *-> A) -> (ts *-> B) -> (ts *-> C) :=
   match ts with
@@ -100,7 +101,8 @@ Polymorphic Fixpoint lift_curried (ts : telescope) {A B C : Type}
   | Arr t ts => fun a b x => lift_curried (ts x) f (a x) (b x)
   end.
 
-Fixpoint extend (ts : telescope) : (ts *-> Type) -> telescope :=
+Fixpoint extend {n : nat} (ts : telescope n) :
+  (ts *-> Type) -> telescope (S n) :=
   match ts with
   | Tip => fun f => Arr f (fun _ => Tip)
   | Arr t ts => fun f => Arr t (fun x => extend (ts x) (f x))
