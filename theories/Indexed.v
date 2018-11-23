@@ -58,7 +58,7 @@ Polymorphic Fixpoint uncurry {n : nat} (ts : telescope n) :
   forall (res : product ts -> Type),
     foralls_ ts res -> forall xs, res xs :=
   match ts with
-  | Tip => fun _ f 'tt => f
+  | Tip => fun res f 'tt => f
   | Arr t ts => fun _ f '(existT _ x xs) =>
     uncurry (ts x) _ (f x) xs
   end.
@@ -109,6 +109,31 @@ Fixpoint extend {n : nat} (ts : telescope n) :
   end.
 
 Infix ">-" := extend (at level 40, left associativity).
+
+Fixpoint snoc {n : nat} {ts : telescope n} :
+  forall (A : ts *-> Type) (xs : product ts),
+    uncurry A xs -> product (ts >- A) :=
+  match ts with
+  | Tip => fun (A : Type) 'tt (a : A) => existT _ a tt
+  | Arr t ts' =>
+    fun (A : forall x : t, ts' x *-> Type) '(existT _ x xs')
+        (a : uncurry (A x) xs') =>
+      existT _ x (snoc (A x) xs' a)
+  end.
+
+Polymorphic Fixpoint FORALLS_0 {m0 : nat} (ts0 : telescope m0)
+            (n : nat) :
+  ((product ts0 -> telescope n) -> Type) -> Type :=
+  match n with
+  | O => fun f => f (fun _ => Tip)
+  | S m => fun f => forall A : ts0 *-> Type,
+      FORALLS_0 (ts0 >- A) m (fun tsm => f (fun xs0 =>
+        Arr (uncurry A xs0) (fun a => tsm (snoc A xs0 a))))
+  end.
+
+Polymorphic Definition FORALLS_ (n : nat)
+            (f : telescope n -> Type) : Type :=
+  FORALLS_0 Tip n (fun tsn => f (tsn tt)).
 
 Module TelescopeNotations.
 
