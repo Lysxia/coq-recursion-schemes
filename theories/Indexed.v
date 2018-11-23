@@ -135,6 +135,21 @@ Polymorphic Definition FORALLS_ (n : nat)
             (f : telescope n -> Type) : Type :=
   FORALLS_0 Tip n (fun tsn => f (tsn tt)).
 
+Polymorphic Fixpoint FUNS_0 {m0 : nat} (ts0 : telescope m0)
+            (n : nat) :
+  forall (f : (product ts0 -> telescope n) -> Type),
+    (forall tsn, f tsn) -> FORALLS_0 ts0 n f :=
+  match n with
+  | O => fun f g => g (fun _ => Tip)
+  | S m => fun f g A =>
+             FUNS_0 (ts0 >- A) m _ (fun tsm => g _)
+  end.
+
+Polymorphic Definition FUNS_ (n : nat)
+            (f : telescope n -> Type)
+            (g : forall ts : telescope n, f ts) : FORALLS_ n f :=
+  FUNS_0 Tip n (fun tsn => f (tsn tt)) (fun tsn => g (tsn tt)).
+
 Module TelescopeNotations.
 
 Notation "[[ ]]" := Tip : tele_scope.
